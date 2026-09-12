@@ -1440,6 +1440,21 @@
   const AUTH_STORAGE_KEY = "craftedClipzAuth";
   const CLIENT_AUTH_STORAGE_KEY = "craftedClipzClientAuth";
   const CLIENT_LOGIN_STORAGE_KEY = "craftedClipzClientLogin";
+  const WORK_ITEMS_STORAGE_KEY = "craftedClipzWorkItems";
+
+  try {
+    const savedWorkItems = JSON.parse(localStorage.getItem(WORK_ITEMS_STORAGE_KEY) || "null");
+    if (Array.isArray(savedWorkItems)) {
+      WORK_ITEMS = savedWorkItems;
+      nextWorkId = Math.max(0, ...WORK_ITEMS.map(item => Number(item.id) || 0)) + 1;
+    }
+  } catch (error) {
+    localStorage.removeItem(WORK_ITEMS_STORAGE_KEY);
+  }
+
+  function saveWorkItems() {
+    localStorage.setItem(WORK_ITEMS_STORAGE_KEY, JSON.stringify(WORK_ITEMS));
+  }
 
   const loginForm = document.getElementById("login-form");
   const errorMsg = document.getElementById("error-msg");
@@ -1877,6 +1892,7 @@
         if (!confirm(`Remove ${company} and all of their work items?`)) return;
         delete CLIENTS[username];
         WORK_ITEMS = WORK_ITEMS.filter(i => i.client !== username);
+        saveWorkItems();
         renderAdmin();
       });
     });
@@ -2018,6 +2034,7 @@
       item.amount = amount;
       item.status = values.get("status");
       item.pay = values.get("pay");
+      saveWorkItems();
     }
 
     closeEditModal();
@@ -2125,6 +2142,7 @@
         const id = Number(sel.dataset.statusFor);
         const item = WORK_ITEMS.find(i => i.id === id);
         if (item) item.status = sel.value;
+        saveWorkItems();
         renderAdminOverview();
         renderSchedule();
       });
@@ -2135,6 +2153,7 @@
         const id = Number(sel.dataset.payFor);
         const item = WORK_ITEMS.find(i => i.id === id);
         if (item) item.pay = sel.value;
+        saveWorkItems();
         renderAdminOverview();
       });
     });
@@ -2148,6 +2167,7 @@
         const id = Number(btn.dataset.removeWork);
         if (!confirm("Remove this work item?")) return;
         WORK_ITEMS = WORK_ITEMS.filter(i => i.id !== id);
+        saveWorkItems();
         renderAdmin();
       });
     });
@@ -2187,6 +2207,7 @@
     const count = selectedWorkItemIds.size;
     if (!confirm(`Remove ${count} selected work item${count === 1 ? "" : "s"}?`)) return;
     WORK_ITEMS = WORK_ITEMS.filter(item => !selectedWorkItemIds.has(item.id));
+    saveWorkItems();
     selectedWorkItemIds.clear();
     renderAdmin();
   });
@@ -2209,6 +2230,7 @@
     if (!client || !due || !desc || isNaN(amount)) return;
 
     WORK_ITEMS.push(makeWorkItem({ client, type, desc, status, due, amount, pay }));
+    saveWorkItems();
     this.reset();
     renderAdmin();
   });
