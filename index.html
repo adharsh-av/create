@@ -1421,19 +1421,7 @@
     return Object.assign({ id: nextWorkId++ }, fields);
   }
 
-  let WORK_ITEMS = [
-    makeWorkItem({ client: "jptcatering", type: "Video", desc: "Wedding highlight reel — Sharma function", status: "Completed", due: "2026-08-15", amount: 8000, pay: "Paid" }),
-    makeWorkItem({ client: "jptcatering", type: "Video", desc: "Instagram reel — buffet showcase", status: "In Progress", due: "2026-09-18", amount: 5000, pay: "Unpaid" }),
-    makeWorkItem({ client: "jptcatering", type: "Post", desc: "Diwali special menu poster", status: "Pending", due: "2026-09-25", amount: 2000, pay: "Unpaid" }),
-
-    makeWorkItem({ client: "cuddleminds", type: "Video", desc: "Brand intro video", status: "Completed", due: "2026-08-01", amount: 10000, pay: "Paid" }),
-    makeWorkItem({ client: "cuddleminds", type: "Video", desc: "Product explainer — sleep kit", status: "In Progress", due: "2026-09-15", amount: 7000, pay: "Partial" }),
-    makeWorkItem({ client: "cuddleminds", type: "Shoot", desc: "Studio photoshoot — new range", status: "Pending", due: "2026-09-30", amount: 4000, pay: "Unpaid" }),
-
-    makeWorkItem({ client: "bumblebee", type: "Video", desc: "Before/after car detailing reel", status: "Completed", due: "2026-08-20", amount: 6000, pay: "Paid" }),
-    makeWorkItem({ client: "bumblebee", type: "Video", desc: "Customer testimonial video", status: "Pending", due: "2026-09-22", amount: 5500, pay: "Unpaid" }),
-    makeWorkItem({ client: "bumblebee", type: "Post", desc: "Festive service offer banner", status: "Pending", due: "2026-09-19", amount: 1500, pay: "Unpaid" }),
-  ];
+  let WORK_ITEMS = [];
 
   let currentClientUsername = null;
   let loginRole = "client"; // "client" | "admin"
