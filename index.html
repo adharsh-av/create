@@ -1440,32 +1440,27 @@
   const AUTH_STORAGE_KEY = "craftedClipzAuth";
   const CLIENT_AUTH_STORAGE_KEY = "craftedClipzClientAuth";
   const CLIENT_LOGIN_STORAGE_KEY = "craftedClipzClientLogin";
+  const CLIENTS_STORAGE_KEY = "craftedClipzClients";
   const WORK_ITEMS_STORAGE_KEY = "craftedClipzWorkItems";
-  const WORK_ITEMS_SESSION_KEY = "craftedClipzWorkItemsSession";
 
   try {
-    const savedWorkItems = JSON.parse(
-      localStorage.getItem(WORK_ITEMS_STORAGE_KEY) ||
-      sessionStorage.getItem(WORK_ITEMS_SESSION_KEY) ||
-      "null"
-    );
+    const savedClients = JSON.parse(localStorage.getItem(CLIENTS_STORAGE_KEY) || "null");
+    const savedWorkItems = JSON.parse(localStorage.getItem(WORK_ITEMS_STORAGE_KEY) || "null");
+    if (savedClients && typeof savedClients === "object" && !Array.isArray(savedClients)) {
+      CLIENTS = savedClients;
+    }
     if (Array.isArray(savedWorkItems)) {
       WORK_ITEMS = savedWorkItems;
       nextWorkId = Math.max(0, ...WORK_ITEMS.map(item => Number(item.id) || 0)) + 1;
     }
   } catch (error) {
+    localStorage.removeItem(CLIENTS_STORAGE_KEY);
     localStorage.removeItem(WORK_ITEMS_STORAGE_KEY);
-    sessionStorage.removeItem(WORK_ITEMS_SESSION_KEY);
   }
 
-  function saveWorkItems() {
-    const serializedWorkItems = JSON.stringify(WORK_ITEMS);
-    try {
-      localStorage.setItem(WORK_ITEMS_STORAGE_KEY, serializedWorkItems);
-    } catch (error) {
-      // The session copy keeps changes available when local-file storage is restricted.
-    }
-    sessionStorage.setItem(WORK_ITEMS_SESSION_KEY, serializedWorkItems);
+  function saveAppData() {
+    localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(CLIENTS));
+    localStorage.setItem(WORK_ITEMS_STORAGE_KEY, JSON.stringify(WORK_ITEMS));
   }
 
   const loginForm = document.getElementById("login-form");
@@ -1724,6 +1719,23 @@
     document.getElementById("total-due-amount").textContent = formatRupees(totalDue);
   }
 
+  window.addEventListener("storage", event => {
+    if (event.key === CLIENTS_STORAGE_KEY && event.newValue) {
+      CLIENTS = JSON.parse(event.newValue);
+    }
+    if (event.key === WORK_ITEMS_STORAGE_KEY && event.newValue) {
+      WORK_ITEMS = JSON.parse(event.newValue);
+    }
+    if (event.key === CLIENTS_STORAGE_KEY || event.key === WORK_ITEMS_STORAGE_KEY) {
+      if (currentClientUsername && CLIENTS[currentClientUsername]) {
+        renderDashboard(currentClientUsername);
+      }
+      if (adminScreen.classList.contains("visible")) {
+        renderAdmin();
+      }
+    }
+  });
+
   function escapeHtml(str) {
     const div = document.createElement("div");
     div.textContent = str;
@@ -1804,6 +1816,7 @@
     readFileAsDataUrl(file, dataUrl => {
       if (CLIENTS[logoEditUsername]) {
         CLIENTS[logoEditUsername].logo = dataUrl;
+        saveAppData();
         renderClientsTable();
         populateWorkClientDropdown();
       }
@@ -1904,7 +1917,7 @@
         if (!confirm(`Remove ${company} and all of their work items?`)) return;
         delete CLIENTS[username];
         WORK_ITEMS = WORK_ITEMS.filter(i => i.client !== username);
-        saveWorkItems();
+        saveAppData();
         renderAdmin();
       });
     });
@@ -2046,9 +2059,9 @@
       item.amount = amount;
       item.status = values.get("status");
       item.pay = values.get("pay");
-      saveWorkItems();
     }
 
+    saveAppData();
     closeEditModal();
     renderAdmin();
   });
@@ -2066,6 +2079,7 @@
     }
 
     CLIENTS[username] = { password, company, logo: pendingNewClientLogo };
+    saveAppData();
     pendingNewClientLogo = null;
     this.reset();
     applyLogoToEl(document.getElementById("new-client-logo-preview"), null, "New");
@@ -2154,7 +2168,7 @@
         const id = Number(sel.dataset.statusFor);
         const item = WORK_ITEMS.find(i => i.id === id);
         if (item) item.status = sel.value;
-        saveWorkItems();
+        saveAppData();
         renderAdminOverview();
         renderSchedule();
       });
@@ -2165,7 +2179,7 @@
         const id = Number(sel.dataset.payFor);
         const item = WORK_ITEMS.find(i => i.id === id);
         if (item) item.pay = sel.value;
-        saveWorkItems();
+        saveAppData();
         renderAdminOverview();
       });
     });
@@ -2179,7 +2193,7 @@
         const id = Number(btn.dataset.removeWork);
         if (!confirm("Remove this work item?")) return;
         WORK_ITEMS = WORK_ITEMS.filter(i => i.id !== id);
-        saveWorkItems();
+        saveAppData();
         renderAdmin();
       });
     });
@@ -2219,7 +2233,7 @@
     const count = selectedWorkItemIds.size;
     if (!confirm(`Remove ${count} selected work item${count === 1 ? "" : "s"}?`)) return;
     WORK_ITEMS = WORK_ITEMS.filter(item => !selectedWorkItemIds.has(item.id));
-    saveWorkItems();
+    saveAppData();
     selectedWorkItemIds.clear();
     renderAdmin();
   });
@@ -2242,7 +2256,7 @@
     if (!client || !due || !desc || isNaN(amount)) return;
 
     WORK_ITEMS.push(makeWorkItem({ client, type, desc, status, due, amount, pay }));
-    saveWorkItems();
+    saveAppData();
     this.reset();
     renderAdmin();
   });
