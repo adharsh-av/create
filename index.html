@@ -1297,7 +1297,7 @@
 
       <table class="admin-table" id="work-table">
         <thead>
-          <tr><th>Client</th><th>Item</th><th>Due</th><th>Amount</th><th>Status</th><th>Payment</th><th></th></tr>
+          <tr><th><input type="checkbox" id="select-all-work" aria-label="Select all work items" /></th><th>Client</th><th>Item</th><th>Due</th><th>Amount</th><th>Status</th><th>Payment</th><th></th></tr>
         </thead>
         <tbody id="work-table-body"></tbody>
       </table>
@@ -1993,6 +1993,8 @@
 
   // ---- Work items tab ----
 
+  const selectedWorkItemIds = new Set();
+
   function populateWorkClientDropdown() {
     const select = document.getElementById("wi-client");
     const usernames = Object.keys(CLIENTS);
@@ -2003,7 +2005,9 @@
     const body = document.getElementById("work-table-body");
 
     if (WORK_ITEMS.length === 0) {
-      body.innerHTML = `<tr><td colspan="7" style="color:var(--text-muted);">No work items yet.</td></tr>`;
+      selectedWorkItemIds.clear();
+      body.innerHTML = `<tr><td colspan="8" style="color:var(--text-muted);">No work items yet.</td></tr>`;
+      syncWorkSelection();
       return;
     }
 
@@ -2013,6 +2017,7 @@
       const company = CLIENTS[item.client] ? CLIENTS[item.client].company : "(removed client)";
       return `
         <tr>
+          <td><input type="checkbox" class="work-item-checkbox" data-work-item-id="${item.id}" aria-label="Select ${escapeHtml(item.desc)}" ${selectedWorkItemIds.has(item.id) ? "checked" : ""} /></td>
           <td><span class="client-chip">${escapeHtml(company)}</span></td>
           <td>${escapeHtml(item.type)}: ${escapeHtml(item.desc)}</td>
           <td class="mono-cell">${item.due}</td>
@@ -2037,6 +2042,19 @@
           </td>
         </tr>`;
     }).join("");
+
+    body.querySelectorAll(".work-item-checkbox").forEach(checkbox => {
+      checkbox.addEventListener("change", () => {
+        const id = Number(checkbox.dataset.workItemId);
+        if (checkbox.checked) {
+          selectedWorkItemIds.add(id);
+        } else {
+          selectedWorkItemIds.delete(id);
+        }
+        syncWorkSelection();
+      });
+    });
+    syncWorkSelection();
 
     body.querySelectorAll("[data-status-for]").forEach(sel => {
       sel.addEventListener("change", () => {
@@ -2070,6 +2088,28 @@
       });
     });
   }
+
+  function syncWorkSelection() {
+    const selectAll = document.getElementById("select-all-work");
+    if (!selectAll) return;
+    const checkboxes = document.querySelectorAll(".work-item-checkbox");
+    const selectedCount = [...checkboxes].filter(checkbox => checkbox.checked).length;
+    selectAll.checked = checkboxes.length > 0 && selectedCount === checkboxes.length;
+    selectAll.indeterminate = selectedCount > 0 && selectedCount < checkboxes.length;
+  }
+
+  document.getElementById("select-all-work").addEventListener("change", function () {
+    document.querySelectorAll(".work-item-checkbox").forEach(checkbox => {
+      checkbox.checked = this.checked;
+      const id = Number(checkbox.dataset.workItemId);
+      if (this.checked) {
+        selectedWorkItemIds.add(id);
+      } else {
+        selectedWorkItemIds.delete(id);
+      }
+    });
+    syncWorkSelection();
+  });
 
   function editWorkItem(id) {
     openEditModal("work", id);
