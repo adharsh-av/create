@@ -1442,6 +1442,17 @@
   const CLIENT_LOGIN_STORAGE_KEY = "craftedClipzClientLogin";
   const CLIENTS_STORAGE_KEY = "craftedClipzClients";
   const WORK_ITEMS_STORAGE_KEY = "craftedClipzWorkItems";
+  const DEMO_WORK_ITEM_DESCRIPTIONS = new Set([
+    "Wedding highlight reel — Sharma function",
+    "Instagram reel — buffet showcase",
+    "Diwali special menu poster",
+    "Brand intro video",
+    "Product explainer — sleep kit",
+    "Studio photoshoot — new range",
+    "Before/after car detailing reel",
+    "Customer testimonial video",
+    "Festive service offer banner"
+  ]);
 
   try {
     const savedClients = JSON.parse(localStorage.getItem(CLIENTS_STORAGE_KEY) || "null");
@@ -1458,10 +1469,14 @@
     localStorage.removeItem(WORK_ITEMS_STORAGE_KEY);
   }
 
+  WORK_ITEMS = WORK_ITEMS.filter(item => !DEMO_WORK_ITEM_DESCRIPTIONS.has(item.desc));
+
   function saveAppData() {
     localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(CLIENTS));
     localStorage.setItem(WORK_ITEMS_STORAGE_KEY, JSON.stringify(WORK_ITEMS));
   }
+
+  saveAppData();
 
   const loginForm = document.getElementById("login-form");
   const errorMsg = document.getElementById("error-msg");
