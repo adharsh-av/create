@@ -1441,19 +1441,31 @@
   const CLIENT_AUTH_STORAGE_KEY = "craftedClipzClientAuth";
   const CLIENT_LOGIN_STORAGE_KEY = "craftedClipzClientLogin";
   const WORK_ITEMS_STORAGE_KEY = "craftedClipzWorkItems";
+  const WORK_ITEMS_SESSION_KEY = "craftedClipzWorkItemsSession";
 
   try {
-    const savedWorkItems = JSON.parse(localStorage.getItem(WORK_ITEMS_STORAGE_KEY) || "null");
+    const savedWorkItems = JSON.parse(
+      localStorage.getItem(WORK_ITEMS_STORAGE_KEY) ||
+      sessionStorage.getItem(WORK_ITEMS_SESSION_KEY) ||
+      "null"
+    );
     if (Array.isArray(savedWorkItems)) {
       WORK_ITEMS = savedWorkItems;
       nextWorkId = Math.max(0, ...WORK_ITEMS.map(item => Number(item.id) || 0)) + 1;
     }
   } catch (error) {
     localStorage.removeItem(WORK_ITEMS_STORAGE_KEY);
+    sessionStorage.removeItem(WORK_ITEMS_SESSION_KEY);
   }
 
   function saveWorkItems() {
-    localStorage.setItem(WORK_ITEMS_STORAGE_KEY, JSON.stringify(WORK_ITEMS));
+    const serializedWorkItems = JSON.stringify(WORK_ITEMS);
+    try {
+      localStorage.setItem(WORK_ITEMS_STORAGE_KEY, serializedWorkItems);
+    } catch (error) {
+      // The session copy keeps changes available when local-file storage is restricted.
+    }
+    sessionStorage.setItem(WORK_ITEMS_SESSION_KEY, serializedWorkItems);
   }
 
   const loginForm = document.getElementById("login-form");
