@@ -1282,6 +1282,34 @@
         </thead>
         <tbody id="clients-table-body"></tbody>
       </table>
+
+      <div class="admin-form" style="margin-top:22px;">
+        <div class="form-title">Add a vendor</div>
+        <form id="add-vendor-form">
+          <div class="form-grid">
+            <div class="field">
+              <label for="new-vendor-username">Username</label>
+              <input type="text" id="new-vendor-username" required />
+            </div>
+            <div class="field">
+              <label for="new-vendor-company">Vendor name</label>
+              <input type="text" id="new-vendor-company" required />
+            </div>
+            <div class="field">
+              <label for="new-vendor-phone">Phone number</label>
+              <input type="text" id="new-vendor-phone" inputmode="tel" required />
+            </div>
+          </div>
+          <button type="submit" class="small-primary">Add vendor</button>
+        </form>
+      </div>
+
+      <table class="admin-table" id="vendors-table">
+        <thead>
+          <tr><th>Vendor</th><th>Username</th><th>Phone</th><th></th></tr>
+        </thead>
+        <tbody id="vendors-table-body"></tbody>
+      </table>
     </div>
 
     <!-- WORK ITEMS PANE -->
@@ -1293,6 +1321,10 @@
             <div class="field">
               <label for="wi-client">Client</label>
               <select id="wi-client" required></select>
+            </div>
+            <div class="field">
+              <label for="wi-vendor">Assigned vendor</label>
+              <select id="wi-vendor"></select>
             </div>
             <div class="field">
               <label for="wi-type">Type</label>
@@ -1347,7 +1379,7 @@
       <div class="work-table-wrap">
         <table class="admin-table" id="work-table">
           <thead>
-            <tr><th><input type="checkbox" id="select-all-work" aria-label="Select all visible work items" /></th><th>Client</th><th>Item</th><th>Due</th><th>Amount</th><th>Status</th><th>Payment</th><th></th></tr>
+            <tr><th><input type="checkbox" id="select-all-work" aria-label="Select all visible work items" /></th><th>Client</th><th>Vendor</th><th>Item</th><th>Due</th><th>Amount</th><th>Status</th><th>Payment</th><th></th></tr>
           </thead>
           <tbody id="work-table-body"></tbody>
         </table>
@@ -1411,6 +1443,7 @@
     cuddleminds: { password: "cuddle123", company: "Cuddle Minds", phone: "9846631820", logo: "images/LOGO-02.jpg" },
     bumblebee:   { password: "bumble123", company: "Bumble Bee Auto Garage", phone: "8113903838", logo: "images/LOGO – 151.jpg" },
   };
+  let VENDORS = {};
 
   let AGENCY_LOGO = "images/Logo Png-02.png"; // data URL or relative path for Crafted Clipz's own logo
 
@@ -1424,11 +1457,13 @@
   let WORK_ITEMS = [];
 
   let currentClientUsername = null;
+  let currentVendorUsername = null;
   let loginRole = "client"; // "client" | "admin"
   const AUTH_STORAGE_KEY = "craftedClipzAuth";
   const CLIENT_AUTH_STORAGE_KEY = "craftedClipzClientAuth";
   const CLIENT_LOGIN_STORAGE_KEY = "craftedClipzClientLogin";
   const CLIENTS_STORAGE_KEY = "craftedClipzClients";
+  const VENDORS_STORAGE_KEY = "craftedClipzVendors";
   const WORK_ITEMS_STORAGE_KEY = "craftedClipzWorkItems";
   const DEMO_WORK_ITEM_DESCRIPTIONS = new Set([
     "Wedding highlight reel — Sharma function",
@@ -1444,9 +1479,13 @@
 
   try {
     const savedClients = JSON.parse(localStorage.getItem(CLIENTS_STORAGE_KEY) || "null");
+    const savedVendors = JSON.parse(localStorage.getItem(VENDORS_STORAGE_KEY) || "null");
     const savedWorkItems = JSON.parse(localStorage.getItem(WORK_ITEMS_STORAGE_KEY) || "null");
     if (savedClients && typeof savedClients === "object" && !Array.isArray(savedClients)) {
       CLIENTS = savedClients;
+    }
+    if (savedVendors && typeof savedVendors === "object" && !Array.isArray(savedVendors)) {
+      VENDORS = savedVendors;
     }
     if (Array.isArray(savedWorkItems)) {
       WORK_ITEMS = savedWorkItems;
@@ -1454,13 +1493,19 @@
     }
   } catch (error) {
     localStorage.removeItem(CLIENTS_STORAGE_KEY);
+    localStorage.removeItem(VENDORS_STORAGE_KEY);
     localStorage.removeItem(WORK_ITEMS_STORAGE_KEY);
   }
 
   WORK_ITEMS = WORK_ITEMS.filter(item => !DEMO_WORK_ITEM_DESCRIPTIONS.has(item.desc));
 
+  Object.keys(VENDORS).forEach(username => {
+    if (VENDORS[username].phone === "8870307286") delete VENDORS[username];
+  });
+
   function saveAppData() {
     localStorage.setItem(CLIENTS_STORAGE_KEY, JSON.stringify(CLIENTS));
+    localStorage.setItem(VENDORS_STORAGE_KEY, JSON.stringify(VENDORS));
     localStorage.setItem(WORK_ITEMS_STORAGE_KEY, JSON.stringify(WORK_ITEMS));
   }
 
@@ -1496,6 +1541,7 @@
   // ---------------- role toggle on the login screen ----------------
 
   const roleClientBtn = document.getElementById("role-client-btn");
+  const roleVendorBtn = document.getElementById("role-vendor-btn");
   const roleAdminBtn = document.getElementById("role-admin-btn");
   const loginTitle = document.getElementById("login-title");
   const loginSub = document.getElementById("login-sub");
@@ -1515,9 +1561,22 @@
       rememberNote.style.display = "none";
       roleAdminBtn.classList.add("active");
       roleClientBtn.classList.remove("active");
+      if (roleVendorBtn) roleVendorBtn.classList.remove("active");
       loginTitle.textContent = "Admin sign in";
       loginSub.textContent = "Manage clients, work items, and the delivery schedule.";
       hintBox.innerHTML = `Demo admin login —<br><code>admin</code> / <code></code>`;
+    } else if (role === "vendor") {
+      passwordField.style.display = "none";
+      loginIdentifierLabel.textContent = "Phone number";
+      rememberNote.style.display = "none";
+      usernameInput.value = "";
+      passwordInput.value = "";
+      if (roleVendorBtn) roleVendorBtn.classList.add("active");
+      roleClientBtn.classList.remove("active");
+      roleAdminBtn.classList.remove("active");
+      loginTitle.textContent = "Vendor portal";
+      loginSub.textContent = "Sign in to see the work assigned to you.";
+      hintBox.innerHTML = `<span>Add a vendor in the admin panel first.</span>`;
     } else {
       passwordField.style.display = "none";
       loginIdentifierLabel.textContent = "Phone number";
@@ -1532,6 +1591,7 @@
         passwordInput.value = "";
       }
       roleClientBtn.classList.add("active");
+      if (roleVendorBtn) roleVendorBtn.classList.remove("active");
       roleAdminBtn.classList.remove("active");
       loginTitle.textContent = "Client portal";
       loginSub.textContent = "Sign in to see the status of your videos, posts, and shoots.";
@@ -1551,6 +1611,7 @@
   }
 
   roleClientBtn.addEventListener("click", () => setLoginRole("client"));
+  if (roleVendorBtn) roleVendorBtn.addEventListener("click", () => setLoginRole("vendor"));
   roleAdminBtn.addEventListener("click", () => setLoginRole("admin"));
 
   loginForm.addEventListener("submit", function (e) {
@@ -1568,6 +1629,22 @@
       loginScreen.style.display = "none";
       renderAdmin();
       adminScreen.classList.add("visible");
+      return;
+    }
+
+    if (loginRole === "vendor") {
+      const phone = normalizePhone(username);
+      const matchedUsername = Object.keys(VENDORS).find(key => normalizePhone(VENDORS[key].phone || "") === phone);
+      if (!matchedUsername) {
+        errorMsg.textContent = "Enter a valid vendor phone number.";
+        return;
+      }
+      errorMsg.textContent = "";
+      sessionStorage.setItem("craftedClipzVendorAuth", matchedUsername);
+      currentVendorUsername = matchedUsername;
+      renderDashboard(matchedUsername, true);
+      loginScreen.style.display = "none";
+      dashboardScreen.classList.add("visible");
       return;
     }
 
@@ -1591,8 +1668,10 @@
 
   function returnToLogin() {
     currentClientUsername = null;
+    currentVendorUsername = null;
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
     sessionStorage.removeItem(CLIENT_AUTH_STORAGE_KEY);
+    sessionStorage.removeItem("craftedClipzVendorAuth");
     setLoginRole("client");
     let savedClientLogin = null;
     try {
@@ -1620,6 +1699,12 @@
       .sort((a, b) => a.due.localeCompare(b.due));
   }
 
+  function getVendorWork(username) {
+    return WORK_ITEMS
+      .filter(item => item.vendor === username)
+      .sort((a, b) => a.due.localeCompare(b.due));
+  }
+
   function formatRupees(n) {
     return "₹" + n.toLocaleString("en-IN", { minimumFractionDigits: 0 });
   }
@@ -1636,13 +1721,13 @@
     return username ? { username, client: CLIENTS[username] } : null;
   }
 
-  function renderDashboard(username) {
-    const client = CLIENTS[username];
-    const items = getClientWork(username);
+  function renderDashboard(username, isVendor = false) {
+    const account = isVendor ? VENDORS[username] : CLIENTS[username];
+    const items = isVendor ? getVendorWork(username) : getClientWork(username);
 
-    document.getElementById("company-name").textContent = client.company;
+    document.getElementById("company-name").textContent = account.company;
     applyLogoToEl(document.getElementById("dash-agency-logo"), AGENCY_LOGO, "Crafted Clipz");
-    applyLogoToEl(document.getElementById("dash-client-logo"), client.logo, client.company);
+    applyLogoToEl(document.getElementById("dash-client-logo"), account.logo, account.company);
     setBrandmarkLogo();
     document.getElementById("today-date").textContent =
       "Crafted Clipz production status — " +
@@ -1732,6 +1817,9 @@
     if (event.key === CLIENTS_STORAGE_KEY || event.key === WORK_ITEMS_STORAGE_KEY) {
       if (currentClientUsername && CLIENTS[currentClientUsername]) {
         renderDashboard(currentClientUsername);
+      }
+      if (currentVendorUsername && VENDORS[currentVendorUsername]) {
+        renderDashboard(currentVendorUsername, true);
       }
       if (adminScreen.classList.contains("visible")) {
         renderAdmin();
@@ -1848,7 +1936,9 @@
     applyLogoToEl(document.getElementById("agency-logo-preview"), AGENCY_LOGO, "Crafted Clipz");
     renderAdminOverview();
     renderClientsTable();
+    renderVendorsTable();
     populateWorkClientDropdown();
+    populateWorkVendorDropdown();
     populateWorkClientFilter();
     renderWorkTable();
     renderSchedule();
@@ -1926,6 +2016,34 @@
     });
   }
 
+  function renderVendorsTable() {
+    const body = document.getElementById("vendors-table-body");
+    const usernames = Object.keys(VENDORS);
+    if (usernames.length === 0) {
+      body.innerHTML = `<tr><td colspan="4" style="color:var(--text-muted);">No vendors yet.</td></tr>`;
+      return;
+    }
+    body.innerHTML = usernames.map(username => `
+      <tr>
+        <td>${escapeHtml(VENDORS[username].company)}</td>
+        <td class="mono-cell">${escapeHtml(username)}</td>
+        <td class="mono-cell">${escapeHtml(VENDORS[username].phone)}</td>
+        <td><button type="button" class="text-danger" data-remove-vendor="${escapeHtml(username)}">Remove</button></td>
+      </tr>`).join("");
+    body.querySelectorAll("[data-remove-vendor]").forEach(button => {
+      button.addEventListener("click", () => {
+        const username = button.dataset.removeVendor;
+        if (!confirm(`Remove ${VENDORS[username].company} and unassign their work items?`)) return;
+        delete VENDORS[username];
+        WORK_ITEMS.forEach(item => {
+          if (item.vendor === username) item.vendor = "";
+        });
+        saveAppData();
+        renderAdmin();
+      });
+    });
+  }
+
   let editingRecord = null;
   const editModal = document.getElementById("edit-modal");
   const editForm = document.getElementById("edit-form");
@@ -1973,6 +2091,9 @@
       const clientOptions = Object.keys(CLIENTS).map(username =>
         `<option value="${escapeHtml(username)}" ${username === item.client ? "selected" : ""}>${escapeHtml(CLIENTS[username].company)}</option>`
       ).join("");
+      const vendorOptions = Object.keys(VENDORS).map(username =>
+        `<option value="${escapeHtml(username)}" ${username === item.vendor ? "selected" : ""}>${escapeHtml(VENDORS[username].company)}</option>`
+      ).join("");
       document.getElementById("edit-modal-title").textContent = "Edit work item";
       editForm.innerHTML = `
         <div class="edit-modal-grid">
@@ -1986,6 +2107,12 @@
               <option ${item.type === "Video" ? "selected" : ""}>Video</option>
               <option ${item.type === "Post" ? "selected" : ""}>Post</option>
               <option ${item.type === "Shoot" ? "selected" : ""}>Shoot</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="edit-work-vendor">Assigned vendor</label>
+            <select id="edit-work-vendor" name="vendor">
+              <option value="">Unassigned</option>${vendorOptions}
             </select>
           </div>
           <div class="field full-width">
@@ -2056,6 +2183,7 @@
         return;
       }
       item.client = values.get("client");
+      item.vendor = values.get("vendor") || "";
       item.type = values.get("type");
       item.desc = values.get("desc").trim();
       item.due = values.get("due");
@@ -2089,6 +2217,18 @@
     renderAdmin();
   });
 
+  document.getElementById("add-vendor-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const username = document.getElementById("new-vendor-username").value.trim();
+    const company = document.getElementById("new-vendor-company").value.trim();
+    const phone = normalizePhone(document.getElementById("new-vendor-phone").value.trim());
+    if (!username || !company || !phone || VENDORS[username]) return;
+    VENDORS[username] = { company, phone, logo: null };
+    saveAppData();
+    this.reset();
+    renderAdmin();
+  });
+
   // ---- Work items tab ----
 
   const selectedWorkItemIds = new Set();
@@ -2097,6 +2237,14 @@
     const select = document.getElementById("wi-client");
     const usernames = Object.keys(CLIENTS);
     select.innerHTML = usernames.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(CLIENTS[u].company)}</option>`).join("");
+  }
+
+  function populateWorkVendorDropdown() {
+    const select = document.getElementById("wi-vendor");
+    const usernames = Object.keys(VENDORS);
+    select.innerHTML = `<option value="">Unassigned</option>` + usernames.map(username =>
+      `<option value="${escapeHtml(username)}">${escapeHtml(VENDORS[username].company)}</option>`
+    ).join("");
   }
 
   function populateWorkClientFilter() {
@@ -2125,10 +2273,12 @@
 
     body.innerHTML = sorted.map(item => {
       const company = CLIENTS[item.client] ? CLIENTS[item.client].company : "(removed client)";
+      const vendor = item.vendor && VENDORS[item.vendor] ? VENDORS[item.vendor].company : "Unassigned";
       return `
         <tr>
           <td><input type="checkbox" class="work-item-checkbox" data-work-item-id="${item.id}" aria-label="Select ${escapeHtml(item.desc)}" ${selectedWorkItemIds.has(item.id) ? "checked" : ""} /></td>
           <td><span class="client-chip">${escapeHtml(company)}</span></td>
+          <td>${escapeHtml(vendor)}</td>
           <td>${escapeHtml(item.type)}: ${escapeHtml(item.desc)}</td>
           <td class="mono-cell">${item.due}</td>
           <td class="mono-cell">${formatRupees(item.amount)}</td>
@@ -2248,6 +2398,7 @@
   document.getElementById("add-work-form").addEventListener("submit", function (e) {
     e.preventDefault();
     const client = document.getElementById("wi-client").value;
+    const vendor = document.getElementById("wi-vendor").value;
     const type = document.getElementById("wi-type").value;
     const due = document.getElementById("wi-due").value;
     const amountRaw = document.getElementById("wi-amount").value.trim();
@@ -2258,7 +2409,7 @@
     const amount = Number(amountRaw);
     if (!client || !due || !desc || isNaN(amount)) return;
 
-    WORK_ITEMS.push(makeWorkItem({ client, type, desc, status, due, amount, pay }));
+    WORK_ITEMS.push(makeWorkItem({ client, vendor, type, desc, status, due, amount, pay }));
     saveAppData();
     this.reset();
     renderAdmin();
@@ -2410,6 +2561,12 @@
     loginScreen.style.display = "none";
     renderAdmin();
     adminScreen.classList.add("visible");
+  } else if (sessionStorage.getItem("craftedClipzVendorAuth") && VENDORS[sessionStorage.getItem("craftedClipzVendorAuth")]) {
+    setLoginRole("vendor");
+    currentVendorUsername = sessionStorage.getItem("craftedClipzVendorAuth");
+    loginScreen.style.display = "none";
+    renderDashboard(currentVendorUsername, true);
+    dashboardScreen.classList.add("visible");
   } else {
     setLoginRole("client");
     const savedClientUsername = sessionStorage.getItem(CLIENT_AUTH_STORAGE_KEY);
