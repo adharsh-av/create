@@ -1509,6 +1509,21 @@
     localStorage.setItem(WORK_ITEMS_STORAGE_KEY, JSON.stringify(WORK_ITEMS));
   }
 
+  function refreshSavedAppData() {
+    try {
+      const savedClients = JSON.parse(localStorage.getItem(CLIENTS_STORAGE_KEY) || "null");
+      const savedWorkItems = JSON.parse(localStorage.getItem(WORK_ITEMS_STORAGE_KEY) || "null");
+      if (savedClients && typeof savedClients === "object" && !Array.isArray(savedClients)) {
+        CLIENTS = savedClients;
+      }
+      if (Array.isArray(savedWorkItems)) {
+        WORK_ITEMS = savedWorkItems.filter(item => !DEMO_WORK_ITEM_DESCRIPTIONS.has(item.desc));
+      }
+    } catch (error) {
+      return;
+    }
+  }
+
   saveAppData();
 
   const loginForm = document.getElementById("login-form");
@@ -1722,6 +1737,7 @@
   }
 
   function renderDashboard(username, isVendor = false) {
+    refreshSavedAppData();
     const account = isVendor ? VENDORS[username] : CLIENTS[username];
     const items = isVendor ? getVendorWork(username) : getClientWork(username);
 
@@ -1824,6 +1840,12 @@
       if (adminScreen.classList.contains("visible")) {
         renderAdmin();
       }
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    if (currentClientUsername && CLIENTS[currentClientUsername]) {
+      renderDashboard(currentClientUsername);
     }
   });
 
