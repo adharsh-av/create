@@ -798,6 +798,38 @@
     border-collapse: collapse;
   }
 
+  .work-table-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:14px;
+  }
+
+  .work-table-toolbar-actions{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+
+  .work-table-toolbar label{
+    margin:0;
+    font-size:12px;
+  }
+
+  .work-table-toolbar select{
+    width:auto;
+    min-width:190px;
+  }
+
+  .work-table-wrap{
+    overflow-x:auto;
+  }
+
+  #work-table{
+    min-width:780px;
+  }
+
   .admin-table th{
     text-align:left;
     font-size: 11.5px;
@@ -875,6 +907,14 @@
     .admin-table, .admin-table tbody, .admin-table tr, .admin-table td{ display:block; width:100%; }
     .admin-table tr{ padding: 10px 0; border-bottom: 1px solid var(--line); }
     .admin-table td{ border:none; padding: 3px 0; }
+    .work-table-toolbar{ align-items:flex-start; flex-direction:column; }
+    .work-table-toolbar select{ width:100%; }
+    #work-table, #work-table tbody, #work-table tr, #work-table td{ display:table; width:auto; }
+    #work-table{ display:table; width:100%; }
+    #work-table tbody{ display:table-row-group; width:100%; }
+    #work-table tr{ display:table-row; padding:0; }
+    #work-table td{ display:table-cell; border-bottom:1px solid var(--line); padding:11px 10px; }
+    #work-table thead{ display:table-header-group; }
   }
 
   /* ================= logos / branding ================= */
@@ -1295,12 +1335,23 @@
         </form>
       </div>
 
-      <table class="admin-table" id="work-table">
-        <thead>
-          <tr><th><input type="checkbox" id="select-all-work" aria-label="Select all work items" /></th><th>Client</th><th>Item</th><th>Due</th><th>Amount</th><th>Status</th><th>Payment</th><th></th></tr>
-        </thead>
-        <tbody id="work-table-body"></tbody>
-      </table>
+      <div class="work-table-toolbar">
+        <label for="work-client-filter">Filter by client</label>
+        <div class="work-table-toolbar-actions">
+          <select id="work-client-filter" aria-label="Filter work items by client">
+            <option value="all">All clients</option>
+          </select>
+          <button type="button" class="text-danger" id="remove-selected-work" disabled>Remove selected</button>
+        </div>
+      </div>
+      <div class="work-table-wrap">
+        <table class="admin-table" id="work-table">
+          <thead>
+            <tr><th><input type="checkbox" id="select-all-work" aria-label="Select all visible work items" /></th><th>Client</th><th>Item</th><th>Due</th><th>Amount</th><th>Status</th><th>Payment</th><th></th></tr>
+          </thead>
+          <tbody id="work-table-body"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- SCHEDULE PANE -->
@@ -1755,6 +1806,7 @@
     renderAdminOverview();
     renderClientsTable();
     populateWorkClientDropdown();
+    populateWorkClientFilter();
     renderWorkTable();
     renderSchedule();
     renderCalendar();
@@ -2001,17 +2053,29 @@
     select.innerHTML = usernames.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(CLIENTS[u].company)}</option>`).join("");
   }
 
+  function populateWorkClientFilter() {
+    const select = document.getElementById("work-client-filter");
+    const currentValue = select.value || "all";
+    const options = Object.keys(CLIENTS).map(username =>
+      `<option value="${escapeHtml(username)}">${escapeHtml(CLIENTS[username].company)}</option>`
+    ).join("");
+    select.innerHTML = `<option value="all">All clients</option>${options}`;
+    select.value = Object.prototype.hasOwnProperty.call(CLIENTS, currentValue) ? currentValue : "all";
+  }
+
   function renderWorkTable() {
     const body = document.getElementById("work-table-body");
+    const clientFilter = document.getElementById("work-client-filter").value;
+    const visibleItems = WORK_ITEMS.filter(item => clientFilter === "all" || item.client === clientFilter);
 
-    if (WORK_ITEMS.length === 0) {
+    if (visibleItems.length === 0) {
       selectedWorkItemIds.clear();
-      body.innerHTML = `<tr><td colspan="8" style="color:var(--text-muted);">No work items yet.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="8" style="color:var(--text-muted);">No work items match this filter.</td></tr>`;
       syncWorkSelection();
       return;
     }
 
-    const sorted = [...WORK_ITEMS].sort((a, b) => a.due.localeCompare(b.due));
+    const sorted = [...visibleItems].sort((a, b) => a.due.localeCompare(b.due));
 
     body.innerHTML = sorted.map(item => {
       const company = CLIENTS[item.client] ? CLIENTS[item.client].company : "(removed client)";
@@ -2096,6 +2160,8 @@
     const selectedCount = [...checkboxes].filter(checkbox => checkbox.checked).length;
     selectAll.checked = checkboxes.length > 0 && selectedCount === checkboxes.length;
     selectAll.indeterminate = selectedCount > 0 && selectedCount < checkboxes.length;
+    const removeSelected = document.getElementById("remove-selected-work");
+    removeSelected.disabled = selectedWorkItemIds.size === 0;
   }
 
   document.getElementById("select-all-work").addEventListener("change", function () {
@@ -2109,6 +2175,20 @@
       }
     });
     syncWorkSelection();
+  });
+
+  document.getElementById("work-client-filter").addEventListener("change", () => {
+    selectedWorkItemIds.clear();
+    renderWorkTable();
+  });
+
+  document.getElementById("remove-selected-work").addEventListener("click", () => {
+    if (selectedWorkItemIds.size === 0) return;
+    const count = selectedWorkItemIds.size;
+    if (!confirm(`Remove ${count} selected work item${count === 1 ? "" : "s"}?`)) return;
+    WORK_ITEMS = WORK_ITEMS.filter(item => !selectedWorkItemIds.has(item.id));
+    selectedWorkItemIds.clear();
+    renderAdmin();
   });
 
   function editWorkItem(id) {
